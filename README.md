@@ -142,46 +142,7 @@ where t.amount != il.posted_amount
 select * 
 from anomaly_summary ;
 ```
-#### TOTAL DAILY ANOMALIES AND AMOUNT
-```sql
-with daily_anomalies as (
-select 
-		date(t.transaction_date ) as anomaly_date,
-		'missing ledger' as anomaly_type,
-		count(t.transaction_reference ),
-		sum(t.amount ) 
-from transactions t 
-left join internal_ledger il  
-on t.transaction_reference = il.transaction_reference 
-where t.transaction_status = 'successful' and il.transaction_reference is null
-group by date(t.transaction_date) 
-union all
-select 
-		date(il.posting_date ),
-		'Orphan Ledger',
-		count(il.transaction_reference ),
-		sum(il.posted_amount )
-from internal_ledger il 
-left join transactions t 
-on il.transaction_reference = t.transaction_reference 
-where t.transaction_reference is null
-group by date(il.posting_date )
-union all
-select 
-		date(t.transaction_date ),
-		'Amount Missing',
-		count(t.transaction_reference ),
-		sum(abs(t.amount- il.posted_amount))
-from transactions t 
-left join internal_ledger il 
-on t.transaction_reference  = il.transaction_reference 
-where t.amount != il.posted_amount 
-group by date(t.transaction_date )  
-)
-select *
-from daily_anomalies
---order by anomaly_date 
-```
+
 ### Key Insights
 - Reconciliation rate of approximately 87% indicates operational inefficiencies.
 - Amount mismatches contributed the highest financial exposure.
@@ -193,7 +154,7 @@ This project demonstrates how data reconciliation can uncover hidden discrepanci
 
 --
 <img width="1380" height="938" alt="Screenshot 2026-04-14 094010" src="https://github.com/user-attachments/assets/dccee6a9-234a-426c-adca-376b36e7b31d" />
-<img width="1301" height="938" alt="Screenshot 2026-04-17 074052" src="https://github.com/user-attachments/assets/d95f4748-a13f-4ef1-8918-fb9f177c884f" />
+
 
 
 
