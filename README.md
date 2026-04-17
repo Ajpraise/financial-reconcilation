@@ -1,8 +1,20 @@
 # Financial Data Reconcilation & Risk Analysis Report
+
+## Table Of Contents
+- [Project Overview](#Project-Overview)
+- [Objective](#Objective)
+- [Data Overview](#Data-Overview)
+- [Methodology](#Methodology)
+- [SQL Analysis and Queries](#SQL-Analysis-and-Queries)
+- [Key Insights](#Key-Insights)
+
+
 ## Project Overview
 This project focuses on building a financial data reconciliation system to identify discrepancies between transaction records and internal ledger systems. Using SQL and Power BI, anomalies such as amount mismatches, missing ledger entries, and orphan records were detected and analyzed. The project also quantifies financial exposure, evaluates reconciliation performance and provides insights into operational risks through interactive dashboards.
+
 ## Objective
 Analyze discrepancies between transaction records and internal ledger systems to identify anomalies, measure financial exposure, and assess reconciliation performance.
+
 ## Data Overview
 The dataset consists of approximately 100,000 simulated financial transaction records. Two primary tables were used: transactions and internal_ledger. The dataset includes realistic anomalies such as amount mismatches, missing ledger entries, and orphan records.
 ##  Methodology
@@ -32,28 +44,6 @@ from transactions t
 left join internal_ledger il 
 on t.transaction_reference = il.transaction_reference 
 where t.transaction_status = 'successful' and il.transaction_reference is null ;
-```
-#### OPHAN LEDGER ENTRIES
-```sql
-------- OPHAN LEDGER ENTRIES---------------------------------------------------------------------
-select * 
-		/*il.ledger_id ,
-		il.transaction_reference ,
-		il.account_id ,
-		il.posting_date ,
-		il.posted_amount */
-from internal_ledger il 
-left join transactions t 
-on il.transaction_reference = t.transaction_reference 
-where  t.transaction_status is null ;
-
-select 'Ophan Ledger' as anomaly_type,
-		count(*),
-		sum(il.posted_amount )as posted_amount
-from internal_ledger il 
-left join transactions t 
-on il.transaction_reference = t.transaction_reference 
-where  t.transaction_status is null ;
 ```
 #### AMOUNT MISMATCH
 ```sql
@@ -96,29 +86,9 @@ from(
 		from internal_ledger  
 		group by transaction_reference 
 		having count(transaction_reference ) > 1 
- 	)
-;
+ 	);
 ```
-#### DUPLICATE LEDGER POSTING
-```sql
----------DUPLICATE LEDGER POSTING--------------------------------------------------------------------------
 
-select il.transaction_reference , count(il.transaction_reference )
-from internal_ledger il 
-group by il.transaction_reference 
-having count(il.transaction_reference ) > 1;
-
-select 
-		'Duplicate Ledger' as anomaly_type,
-		count(*)as record_count	,
-		sum(posted_amount )
-from (
-		select transaction_reference , posted_amount 
-		from internal_ledger  
-		group by transaction_reference, posted_amount
-		having count(transaction_reference ) > 1
-		);
-```
 #### FAILED OR PENDING TRANSACTION POSTED TO LEDGER
 ```sql
 --------------FAILED OR PENDING TRANSACTION POSTED TO LEDGER-----------------------------------------------------
@@ -141,18 +111,89 @@ left join internal_ledger il
 on t.transaction_reference = il.transaction_reference 
 where t.transaction_status in ('failed', 'pending');
 ```
-#### SETTLEMENT MISMATCH
+#### TOTAL COUNT AND AMOUNT
 ```sql
---------------SETTLEMENT MISMATCH-----------------------------------------------------------------------------------------
-
-select settlement_date ,
-		total_transaction_amount,
-		total_ledger_amount ,
-		net_settlement_amount ,
-		(total_transaction_amount - total_ledger_amount )as difference
-from daily_settlement 
-where total_transaction_amount != total_ledger_amount  ;
+with anomaly_summary as (
+select  'Missing Ledger' anomaly_type,
+		count(t.transaction_id ), 
+		sum(t.amount) as missing_ledger_amount 	
+from transactions t 
+left join internal_ledger il 
+on t.transaction_reference = il.transaction_reference 
+where t.transaction_status = 'successful' and il.transaction_reference is null 
+union all
+select 'Ophan Ledger' ,
+		count(*),
+		sum(il.posted_amount )as posted_amount
+from internal_ledger il 
+left join transactions t 
+on il.transaction_reference = t.transaction_reference 
+where  t.transaction_status is null 
+union all
+select 
+		'Amount Mismatch' ,
+		count(*) as record_count,
+		sum(abs(t.amount - il.posted_amount ))as total_amount
+from transactions t 
+left join internal_ledger il 
+on t.transaction_reference  = il.transaction_reference 
+where t.amount != il.posted_amount 
+)
+select * 
+from anomaly_summary ;
 ```
+#### TOTAL DAILY ANOMALIES AND AMOUNT
+```sql
+with daily_anomalies as (
+select 
+		date(t.transaction_date ) as anomaly_date,
+		'missing ledger' as anomaly_type,
+		count(t.transaction_reference ),
+		sum(t.amount ) 
+from transactions t 
+left join internal_ledger il  
+on t.transaction_reference = il.transaction_reference 
+where t.transaction_status = 'successful' and il.transaction_reference is null
+group by date(t.transaction_date) 
+union all
+select 
+		date(il.posting_date ),
+		'Orphan Ledger',
+		count(il.transaction_reference ),
+		sum(il.posted_amount )
+from internal_ledger il 
+left join transactions t 
+on il.transaction_reference = t.transaction_reference 
+where t.transaction_reference is null
+group by date(il.posting_date )
+union all
+select 
+		date(t.transaction_date ),
+		'Amount Missing',
+		count(t.transaction_reference ),
+		sum(abs(t.amount- il.posted_amount))
+from transactions t 
+left join internal_ledger il 
+on t.transaction_reference  = il.transaction_reference 
+where t.amount != il.posted_amount 
+group by date(t.transaction_date )  
+)
+select *
+from daily_anomalies
+--order by anomaly_date 
+```
+### Key Insights
+- Reconciliation rate of approximately 87% indicates operational inefficiencies.
+- Amount mismatches contributed the highest financial exposure.
+- Financial risk is concentrated among a small number of accounts.
+- Monthly trends show consistent anomaly patterns, suggesting systemic issues.
+
+## Conclusion
+This project demonstrates how data reconciliation can uncover hidden discrepancies within financial systems. Although most transactions were successfully reconciled, the presence of anomalies and financial exposure indicates that critical inconsistencies remain. This highlights the importance of robust reconciliation systems, as even small discrepancies can accumulate into significant financial risk if left undetected.
+
+--
+<img width="1380" height="938" alt="Screenshot 2026-04-14 094010" src="https://github.com/user-attachments/assets/dccee6a9-234a-426c-adca-376b36e7b31d" />
+<img width="1301" height="938" alt="Screenshot 2026-04-17 074052" src="https://github.com/user-attachments/assets/d95f4748-a13f-4ef1-8918-fb9f177c884f" />
 
 
 
