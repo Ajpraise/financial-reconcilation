@@ -152,6 +152,7 @@ from anomaly_summary ;
 ## Conclusion
 This project demonstrates how data reconciliation can uncover hidden discrepancies within financial systems. Although most transactions were successfully reconciled, the presence of anomalies and financial exposure indicates that critical inconsistencies remain. This highlights the importance of robust reconciliation systems, as even small discrepancies can accumulate into significant financial risk if left undetected.
 
+Interact with dashborad here https://drive.google.com/file/d/1jPTLxM-QhgsNblYpHkkAog42WeNcREZo/view?usp=sharing
 --
 <img width="1380" height="938" alt="Screenshot 2026-04-14 094010" src="https://github.com/user-attachments/assets/dccee6a9-234a-426c-adca-376b36e7b31d" />
 
